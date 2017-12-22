@@ -1,22 +1,45 @@
 Step 01: Extract WORLD features
+
 python 001_extract_world_feats.py 
 ./bin/AbS_world ascii_to_float_world feats_world files.head
 
 Step 02: Build base voice and save the linguistic features
+
+# Set voice directory
+mkdir cmu_us_rsk
+cd cmu_us_rsk
+$FESTVOXDIR/src/clustergen cmu us rsk
+
+# Copy the wavefiles and text file 
+./bin/get_wavs /home/srallaba/data/tts/arctic/rsk/wav/arctic*
+cp /home/srallaba/data/tts/arctic/rsk/txt.done.data.arctic > etc/txt.done.data
+
+# Set to save the features and coefficients
 cp festvox/clustergen.scm festvox/clustergen.scm.xxx
 cat festvox/clustergen.scm.xxx | sed 's/(defvar cg:save_dumped_coeff_files nil)/(defvar cg:save_dumped_coeff_files t)/' > festvox/clustergen.scm
 
+# Text preprocessing
 ./bin/do_build build_prompts etc/txt.done.data
 ./bin/do_build label etc/txt.done.data
 ./bin/do_clustergen parallel build_utts etc/txt.done.data
 ./bin/do_clustergen generate_statenames etc/txt.done.data
 ./bin/do_clustergen generate_filters etc/txt.done.data
 
+# Extract features
 ./bin/do_clustergen parallel f0_v_sptk etc/txt.done.data
 ./bin/do_clustergen parallel mcep_sptk etc/txt.done.data
 ./bin/do_clustergen parallel combine_coeffs_v etc/txt.done.data
  
+ # Build a base voice
 ./bin/traintest etc/txt.done.data
 ./bin/do_clustergen parallel cluster etc/txt.done.data.train
 ./bin/do_clustergen dur etc/txt.done.data.train
  
+ cd ..
+ 
+Step 03: Dump linguistic features
+sh 03_001_make_featstoDNN.sh
+sh 03_002_make_bin_feats.sh
+
+Step 04: Mapping
+sh 04_map.sh
