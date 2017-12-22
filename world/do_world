@@ -1,0 +1,149 @@
+#!/bin/bash
+
+LANG=C; export LANG
+
+if [ ! "$ESTDIR" ]
+then
+   echo "environment variable ESTDIR is unset"
+   echo "set it to your local speech tools directory e.g."
+   echo '   bash$ export ESTDIR=/home/awb/projects/speech_tools/'
+   echo or
+   echo '   csh% setenv ESTDIR /home/awb/projects/speech_tools/'
+   exit 1
+fi
+
+if [ ! "$FESTVOXDIR" ]
+then
+   echo "environment variable FESTVOXDIR is unset"
+   echo "set it to your local festvox directory e.g."
+   echo '   bash$ export FESTVOXDIR=/home/awb/projects/festvox/'
+   echo or
+   echo '   csh% setenv FESTVOXDIR /home/awb/projects/festvox/'
+   exit 1
+fi
+
+if [ "$CLUSTERGENDIR" = "" ]
+then
+    export CLUSTERGENDIR=$FESTVOXDIR/src/clustergen
+fi
+
+SPTKDIR='/home/srallaba/tools/SPTK-3.9.clone'
+
+TRAIN_DIR='.'
+
+SRC_DIR=$1
+TGT_DIR=$2
+FEATURE_DIR='feats_world'
+FILE=$3
+
+x2x=$SPTKDIR/bin/x2x
+mcep=$SPTKDIR/bin/mcep
+mgc2sp=$SPTKDIR/bin/mgc2sp
+frame=$SPTKDIR/bin/frame
+window=$SPTKDIR/bin/window
+excite=$SPTKDIR/bin/excite
+mlsadf=$SPTKDIR/bin/mlsadf
+dtw=$SPTKDIR/bin/dtw
+delta=$SPTKDIR/bin/delta
+MINMAX=$SPTKDIR/bin/minmax
+PITCH=$SPTKDIR/bin/pitch
+SOPR=$SPTKDIR/bin/sopr
+WORLD_DIR='/home/srallaba/hacks/repos/world_merlin/WORLD'
+WORLD_DIR='/home/srallaba/hacks/repos/merlin/tools/bin/WORLD'
+FRAME=$SPTKDIR/bin/frame
+WINDOW=$SPTKDIR/bin/window
+
+echo $SRC_DIR $TGT_DIR
+
+#mkdir -p $FEATURE_DIR $FEATURE_DIR/${SRC_DIR} $FEATURE_DIR/${TGT_DIR} $FEATURE_DIR/${SRC_DIR}_${TGT_DIR}
+
+
+
+if [ "$1" = "wav_to_ccoeffs" ]
+then
+
+   ##### Generate filters first
+   #$0 generate_filters
+    
+   WORLD_FEATURE_DIR=$2
+   FILE=$3
+   nFFTHalf=1024 
+   alpha=0.58
+   mc_size=59
+   order=4
+   order1=5
+   mc_size1=60
+   mkdir -p ${WORLD_FEATURE_DIR} ccoeffs_world
+
+   cat $FILE | while read TRAIN_FILENAME ;
+
+   do
+    echo "Processing" $TRAIN_FILENAME 
+
+    # Get feats
+    echo $WORLD_DIR/analysis  wav/$TRAIN_FILENAME.wav ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.f0_d ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.sp_d ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.ap_d  
+    $WORLD_DIR/analysis  wav/$TRAIN_FILENAME.wav ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.f0_d ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.sp_d ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.ap_d    
+
+    # Compute log f0
+    cat ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.f0_d | $x2x +df | $SOPR -magic 0.0 -LN -MAGIC -1.0 | $x2x +fa > ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.lf0_ascii
+    echo "Computed log f0" ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.lf0_ascii 
+
+    # Compute MGC
+    $x2x +df ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.sp_d | $SOPR -R -m 32768.0 | $mcep -a $alpha -m $mc_size -l $nFFTHalf -e 1.0E-8 -j 0 -f 0.0 -q 3 | $x2x +fa$mc_size1  > ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.mgc_ascii
+    echo "Computed MGC "  ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii
+
+    # Compute band aperiodicity
+    $x2x +df ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.ap_d | $SOPR -R -m 32768.0 | $mcep -a $alpha -m $order -l $nFFTHalf -e 1.0E-8 -j 0 -f 0.0 -q 3 | $x2x +fa$order1 > ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.bap_ascii
+    echo $TRAIN_FILENAME "Computed band aperiodicity" ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.bap_ascii
+
+    # Combine the coefficients
+    paste ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.bap_ascii > ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii
+    ch_track -s 0.005 -itype ascii ${WORLD_FEATURE_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii -otype est_binary -o ccoeffs_world/${TRAIN_FILENAME}.ccoeffs    
+
+  done
+fi
+
+
+if [ "$1" = "ccoeffs_to_wav" ]
+then
+
+    
+   WORLD_FEATURE_DIR=$2
+   TEST_DIR=$3
+   FILE=$4
+   nFFTHalf=1024 
+   alpha=0.58
+   mc_size=59
+   order=4
+   order1=5
+   mc_size1=60
+   mkdir -p ${TEST_DIR}
+
+   cat $FILE | while read FILENAME ;
+
+   do
+    echo "Processing" $FILENAME  ${WORLD_FEATURE_DIR}/${FILENAME}.ccoeffs_ascii 
+      
+    # Get feats
+    cut -d ' ' -f 1 ${WORLD_FEATURE_DIR}/${FILENAME}.ccoeffs_ascii | $x2x +af > ${TEST_DIR}/${FILENAME}.lf0_world
+    cut -d ' ' -f 2-61 ${WORLD_FEATURE_DIR}/${FILENAME}.ccoeffs_ascii | $x2x +af > ${TEST_DIR}/${FILENAME}.mgc_world
+    cut -d ' ' -f 62-  ${WORLD_FEATURE_DIR}/${FILENAME}.ccoeffs_ascii | $x2x +af > ${TEST_DIR}/${FILENAME}.bap_world
+    echo "Separated the ccoeffs"
+    
+    # F0 
+    $SOPR -magic -1.0 -EXP -MAGIC 0 ${TEST_DIR}/${FILENAME}.lf0_world | $x2x +fd > ${TEST_DIR}/${FILENAME}.f0_d
+    echo "Got back f0"
+
+    # SP
+    $mgc2sp -a $alpha -g 0 -m $mc_size -l $nFFTHalf -o 2 ${TEST_DIR}/${FILENAME}.mgc_world | $SOPR -d 32768.0 -P | $x2x +fa513 > ${TEST_DIR}/${FILENAME}.sp_d || exit
+    echo "Got back spectrum"
+
+    # AP
+    $mgc2sp -a $alpha -g 0 -m $order -l $nFFTHalf -o 2 ${TEST_DIR}/${FILENAME}.bap_world | $SOPR -d 32768.0 -P | $x2x +fa513  > ${TEST_DIR}/${FILENAME}.ap_d
+    echo "Got back aperiodicity"
+
+    # Resynth
+    $WORLD_DIR/synth $nFFTHalf 16000 ${TEST_DIR}/${FILENAME}.f0_d ${TEST_DIR}/${FILENAME}.sp_d ${TEST_DIR}/${FILENAME}.ap_d ${TEST_DIR}/${FILENAME}.wav 
+   done
+fi
+
