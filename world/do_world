@@ -27,7 +27,6 @@ then
     export CLUSTERGENDIR=$FESTVOXDIR/src/clustergen
 fi
 
-SPTKDIR='/home/srallaba/tools/SPTK-3.9.clone'
 
 TRAIN_DIR='.'
 
@@ -48,8 +47,6 @@ delta=$SPTKDIR/bin/delta
 MINMAX=$SPTKDIR/bin/minmax
 PITCH=$SPTKDIR/bin/pitch
 SOPR=$SPTKDIR/bin/sopr
-WORLD_DIR='/home/srallaba/hacks/repos/world_merlin/WORLD'
-WORLD_DIR='/home/srallaba/hacks/repos/merlin/tools/bin/WORLD'
 FRAME=$SPTKDIR/bin/frame
 WINDOW=$SPTKDIR/bin/window
 
