@@ -1,0 +1,121 @@
+#!/bin/bash
+
+LANG=C; export LANG
+
+if [ ! "$ESTDIR" ]
+then
+   echo "environment variable ESTDIR is unset"
+   echo "set it to your local speech tools directory e.g."
+   echo '   bash$ export ESTDIR=/home/awb/projects/speech_tools/'
+   echo or
+   echo '   csh% setenv ESTDIR /home/awb/projects/speech_tools/'
+   exit 1
+fi
+
+if [ ! "$FESTVOXDIR" ]
+then
+   echo "environment variable FESTVOXDIR is unset"
+   echo "set it to your local festvox directory e.g."
+   echo '   bash$ export FESTVOXDIR=/home/awb/projects/festvox/'
+   echo or
+   echo '   csh% setenv FESTVOXDIR /home/awb/projects/festvox/'
+   exit 1
+fi
+
+if [ "$CLUSTERGENDIR" = "" ]
+then
+    export CLUSTERGENDIR=$FESTVOXDIR/src/clustergen
+fi
+
+SPTKDIR='/home/srallaba/tools/SPTK-3.9.clone'
+
+TRAIN_DIR='.'
+
+SRC_DIR=$1
+TGT_DIR=$2
+FEATURE_DIR='feats_world'
+FILE=$3
+
+x2x=$SPTKDIR/bin/x2x
+mcep=$SPTKDIR/bin/mcep
+mgc2sp=$SPTKDIR/bin/mgc2sp
+frame=$SPTKDIR/bin/frame
+window=$SPTKDIR/bin/window
+excite=$SPTKDIR/bin/excite
+mlsadf=$SPTKDIR/bin/mlsadf
+dtw=$SPTKDIR/bin/dtw
+delta=$SPTKDIR/bin/delta
+MINMAX=$SPTKDIR/bin/minmax
+PITCH=$SPTKDIR/bin/pitch
+SOPR=$SPTKDIR/bin/sopr
+F0MIN=50
+F0MAX=200
+F0MEAN=110
+SAMPFREQ=22050
+FREQWARP=0.455
+SAMPKHZ=$(echo "$SAMPFREQ 0.001" | awk '{printf("%0.3f\n",$1*$2)}')     
+FRAMELEN=$(echo | awk "{print int(0.025*$SAMPFREQ)}")
+FRAMESHIFT=$(echo | awk "{print int(0.005*$SAMPFREQ)}")
+WORLD_DIR='/home/srallaba/hacks/repos/world_merlin/WORLD'
+WORLD_DIR='/home/srallaba/hacks/repos/merlin/tools/bin/WORLD'
+FRAME=$SPTKDIR/bin/frame
+WINDOW=$SPTKDIR/bin/window
+
+echo $SRC_DIR $TGT_DIR
+
+#mkdir -p $FEATURE_DIR $FEATURE_DIR/${SRC_DIR} $FEATURE_DIR/${TGT_DIR} $FEATURE_DIR/${SRC_DIR}_${TGT_DIR}
+
+
+
+if [ "$1" = "synth_world" ]
+then
+
+   ##### Generate filters first
+   #$0 generate_filters
+    
+   SRC_DIR=$2
+   FILE=$3
+   WORLD_FEATURE_DIR='.'
+   nFFTHalf=1024 
+   alpha=0.58
+   mc_size=59
+   order=4
+
+   cat $FILE | while read TRAIN_FILENAME ;
+
+   do
+     echo "Processing" $TRAIN_FILENAME 
+   
+     if [ ! -f "${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs" ]
+      then
+         echo "$0: File '${TRAIN_FILENAME}.ccoeffs' not found."
+      else
+
+        # Separate the coefficients
+    	cut -d ' ' -f 1 ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs | $x2x +af > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_world
+        cut -d ' ' -f 2-61 ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs | $x2x +af > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_world
+     	cut -d ' ' -f 62-  ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs | $x2x +af > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_world
+
+     	# Reconstruction
+     	# F0 
+     	$SOPR -magic -1.0 -EXP -MAGIC 0 ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_world | $x2x +fa > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii
+     	echo "Got back f0"
+
+     	# SP
+     	$mgc2sp -a $alpha -g 0 -m $mc_size -l $nFFTHalf -o 2 ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_world | $SOPR -d 32768.0 -P | $x2x +fa513 > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii || exit
+     	echo "Got back spectrum"
+
+     	# AP
+     	$mgc2sp -a $alpha -g 0 -m $order -l $nFFTHalf -o 2 ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_world | $SOPR -d 32768.0 -P | $x2x +fa513  > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii
+     	echo "Got back aperiodicity"
+
+
+     	# Resynth
+     	python 002_synthesize_world.py 16000 ${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii ${SRC_DIR}/${TRAIN_FILENAME}_reconstructed.wav
+     	echo "Resynthesized"
+
+      fi
+
+  done
+fi
+
