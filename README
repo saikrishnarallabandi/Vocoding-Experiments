@@ -37,5 +37,8 @@ cat festvox/clustergen.scm.xxx | sed 's/(defvar cg:save_dumped_coeff_files nil)/
  
  cd ..
  
-Step 03: Mapping
-sh run.sh
+Step 03: Dump linguistic features
+./03_*
+
+Step 04: Mapping
+sh 04_map.sh
