@@ -14,15 +14,15 @@ import pickle, logging
 from keras.callbacks import *
 import random
 
-inp_dim=711
+context = 9
+inp_dim=711 * context
 out_dim = 66
 hidden = int(sys.argv[1])
 exp_name = sys.argv[2]
 
 context_flag = 1
-context = 9
 
-arch = str(hidden) + '_6layerReLu'
+arch = str(hidden) + '_6layerReLu_09Context_NoDropout'
 logfile_name = exp_name + '/logs/log_' + arch + '.log'
 g = open(logfile_name,'w')
 g.close()
@@ -165,30 +165,31 @@ def train_model():
    # INPUT LAYER
    model.add(Dropout(0.0, input_shape=(inp_dim,)))
    model.add(Dense(inp_dim,activation='relu'))
+   #model.add(Dropout(0.2))
 
    # HIDDEN 1
    model.add(Dense(hidden,  activation='relu'))
-   model.add(Dropout(0.2))
+   #model.add(Dropout(0.2))
 
    # HIDDEN 2
    model.add(Dense(hidden,  activation='relu'))
-   model.add(Dropout(0.2))
+   #model.add(Dropout(0.2))
 
    # HIDDEN 3
    model.add(Dense(hidden,  activation='relu'))
-   model.add(Dropout(0.2))
+   #model.add(Dropout(0.2))
 
    # HIDDEN 4
    model.add(Dense(hidden,  activation='relu'))
-   model.add(Dropout(0.2))
+   #model.add(Dropout(0.2))
 
    # HIDDEN 5
    model.add(Dense(hidden,  activation='relu'))
-   model.add(Dropout(0.2))
+   #model.add(Dropout(0.2))
 
    # HIDDEN 6
    model.add(Dense(hidden,  activation='relu'))
-   model.add(Dropout(0.2))
+   #model.add(Dropout(0.2))
 
    model.add(Dense(out_dim, activation='relu'))
 
