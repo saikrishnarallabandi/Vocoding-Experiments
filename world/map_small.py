@@ -60,28 +60,29 @@ valid_output = []
 valid_files = []
 
 for train_file in files_train:
-    A = np.loadtxt('../data/input_full/' + train_file + '.lab')
+    A = np.loadtxt('/home/sirisha.rallabandi/data/tts_stuff/input_full/' + train_file + '.lab')
     i_l = len(A)
-    B = np.loadtxt('../data/output_full/' + train_file + '.ccoeffs')
-    o_l = len(A)
-    diff_l = o_l - i_l
-    for i in range(diff_l):
-       A.append(A[-1])
-    for (a,b) in zip(A,B):
-       train_input.append(a)
-       train_output.append(b)
+    B = np.loadtxt('/home/sirisha.rallabandi/data/tts_stuff/output_full/' + train_file + '.ccoeffs')
+    o_l = len(B)
+    if i_l == o_l:
+      for (a,b) in zip(A,B):
+        train_input.append(a)
+        train_output.append(b)
+    else:
+      print "Discarded ", train_file
 
 for valid_file in files_test:
-    A = np.loadtxt('../data/input_full/' + valid_file + '.lab')
+    A = np.loadtxt('/home/sirisha.rallabandi/data/tts_stuff/input_full/' + valid_file + '.lab')
     i_l = len(A)
-    B = np.loadtxt('../data/output_full/' + valid_file + '.ccoeffs')
-    o_l = len(A)
-    diff_l = o_l - i_l
-    for i in range(diff_l):
-       A.append(A[-1])
-    valid_input.append(A)
-    valid_output.append(B)
-    valid_files.append(valid_file)
+    B = np.loadtxt('/home/sirisha.rallabandi/data/tts_stuff/output_full/' + valid_file + '.ccoeffs')
+    o_l = len(B)
+    if i_l == o_l:
+      valid_input.append(A)
+      valid_output.append(B)
+      valid_files.append(valid_file)
+    else:
+      print "Discarded ", valid_file
+
 
 num_valid = len(valid_files)
 valid_data = zip(valid_input, valid_output, valid_files)
@@ -123,13 +124,13 @@ class LoggingCallback(Callback):
 def test_model():
    # Test each file
    for (inp, out, fname) in valid_data:
-       inp = input_scaler.transform(inp)
+       #inp = input_scaler.transform(inp)
        pred = model.predict(inp)
        pred = output_scaler.inverse_transform(pred)
        np.savetxt(validation_dir + '/' + fname + '.ccoeffs', pred)   
        np.savetxt(resynth_dir + '/' + fname + '.ccoeffs', out)
    for (inp, out, fname) in test_data:
-       inp = input_scaler.transform(inp)
+       #inp = input_scaler.transform(inp)
        pred = model.predict(inp)
        pred = output_scaler.inverse_transform(pred)
        np.savetxt(test_dir + '/' + fname + '.ccoeffs', pred)  
@@ -137,7 +138,7 @@ def test_model():
    
 input_scaler = preprocessing.StandardScaler().fit(train_input)
 output_scaler = preprocessing.StandardScaler().fit(train_output)
-train_input = input_scaler.transform(train_input)
+#train_input = input_scaler.transform(train_input)
 train_output = output_scaler.transform(train_output)
 
 def train_model():
@@ -173,6 +174,8 @@ def train_model():
    # HIDDEN 6
    model.add(Dense(hidden,  activation='relu'))
    model.add(Dropout(0.2))
+
+   model.add(Dense(out_dim, activation='relu'))
 
    # Compile the model
    sgd = SGD(lr=0.01, momentum=0.9, decay=1e-6, nesterov=False)
