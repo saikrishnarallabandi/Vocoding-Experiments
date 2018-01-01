@@ -19,6 +19,9 @@ out_dim = 66
 hidden = int(sys.argv[1])
 exp_name = sys.argv[2]
 
+context_flag = 1
+context = 9
+
 arch = str(hidden) + '_6layerReLu'
 logfile_name = exp_name + '/logs/log_' + arch + '.log'
 g = open(logfile_name,'w')
@@ -32,6 +35,15 @@ save_model = 1
 for k in [model_dir, test_dir, resynth_dir, validation_dir]:
    if not os.path.exists(k):
       os.makedirs(k) 
+      
+ # Contexts
+def make_contexts(nparray, window):
+   context_frames = np.asarray(zip(*[nparray[n:] for n in range(window)]))
+   temp = []
+   for f in context_frames:
+       temp.append(np.concatenate(([f[n] for n in range(window)])))
+   return np.asarray(temp)
+     
 
 # Declare train and test files
 
@@ -65,6 +77,9 @@ for train_file in files_train:
     B = np.loadtxt('/home/sirisha.rallabandi/data/tts_stuff/output_full/' + train_file + '.ccoeffs')
     o_l = len(B)
     if i_l == o_l:
+      if context_flag:
+         A = make_contexts(A, context)
+         B = B[(context-1)/2:-(context-1)/2]
       for (a,b) in zip(A,B):
         train_input.append(a)
         train_output.append(b)
