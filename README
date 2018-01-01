@@ -41,5 +41,8 @@ Step 03: Dump linguistic features
 sh 03_001_make_featstoDNN.sh
 sh 03_002_make_bin_feats.sh
 
-Step 04: Mapping
-sh 04_map.sh
+Step 04: Adjust the coefficients based on EHMM labels
+./bin/AbS_world  combine_coeffs_utt feats_world files
+
+Step 05 : Map !!
+sh map.sh
