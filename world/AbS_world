@@ -129,3 +129,37 @@ then
 
   done
 fi
+
+
+if [ "$1" = "combine_coeffs_utt" ]
+then
+  
+   SRC_DIR=$2
+   FILE=$3
+   WORLD_FEATURE_DIR='.'
+   ABS_DIR=test_reconstruction_world/${SRC_DIR}
+   mkdir -p ${ABS_DIR}
+   nFFTHalf=1024 
+   alpha=0.58
+   mc_size=59
+   order=4
+   order1=5
+   mc_size1=60
+   mgc_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/mgc
+   lf0_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/lf0
+   bap_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/bap 
+   mkdir -p $mgc_dir $lf0_dir $bap_dir
+
+   cat $FILE | while read TRAIN_FILENAME ;
+
+   do
+    echo "Processing" $TRAIN_FILENAME 
+    
+    # Get end duration
+    enddur=`$ESTDIR/../festival/examples/dumpfeats -relation Segment -feats '(end)' festival/utts/$TRAIN_FILENAME.utt | tail -1 | awk '{printf("%0.3f",$1+0.0005)}'`
+    
+    # Adjust
+    cat ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii | $ESTDIR/bin/ch_track -itype ascii -otype ascii -s 0.005 -end $enddur -o ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii_adjusted
+   done
+
+fi
