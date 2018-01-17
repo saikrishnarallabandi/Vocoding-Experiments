@@ -1,9 +1,10 @@
+
 import numpy as np
 import os
 
 def get_sequences(arr, input_dim=56, max_len=100):
    '''
-   We need a function that takes any array of elements and converted them into sequences. 
+   We need a function that takes any array of elements and converts them into sequences. 
    For this, we should already know the maximum length of the sequences and obviously the dimensions of the elements. 
    We should also know the length of the array.
    '''
@@ -18,6 +19,16 @@ def get_sequences(arr, input_dim=56, max_len=100):
       seq[i] = np.concatenate((s, kk),axis=0)
  
    return seq
+
+def get_max_len(arr):
+   '''
+   This takes a list of lists as input and returns the maximum length
+   '''
+   max_len = 0
+   for a in arr:
+     if len(a) > lax_len:
+          max_len = len(a)
+   return max_len
 
 
 def text_to_sequences():
@@ -46,3 +57,4 @@ def text_to_sequences():
       f0_array.append(f0_utterance)
 
    return text_array, f0_array   
+
