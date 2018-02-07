@@ -149,6 +149,7 @@ then
    lf0_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/lf0
    bap_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/bap 
    mkdir -p $mgc_dir $lf0_dir $bap_dir
+   mkdir -p ss_dnn/data/decimal_data_711
 
    cat $FILE | while read TRAIN_FILENAME ;
 
@@ -157,9 +158,22 @@ then
     
     # Get end duration
     enddur=`$ESTDIR/../festival/examples/dumpfeats -relation Segment -feats '(end)' festival/utts/$TRAIN_FILENAME.utt | tail -1 | awk '{printf("%0.3f",$1+0.0005)}'`
-    
+    enddur=`cat $x2x ss_dnn/data/binary_label_711/$TRAIN_FILENAME.lab | wc -l`
+    echo $enddur
+    fl=200
+    enddur=`echo print $enddur/$fl. | python`   
+    echo $enddur
+    #enddur=`awk '{printf("%0.5f",$enddur}'`
+    #enddur=`echo print $enddur - 0.0005 | python` 
+    enddur=`echo "scale=4; $enddur" | bc`
+
     # Adjust
     cat ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii | $ESTDIR/bin/ch_track -itype ascii -otype ascii -s 0.005 -end $enddur -o ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii_adjusted
+    $x2x +fa711 ss_dnn/data/binary_label_711/$TRAIN_FILENAME.lab | $ESTDIR/bin/ch_track -itype ascii -otype ascii -s 0.005 -end $enddur -o  ss_dnn/data/decimal_data_711/${TRAIN_FILENAME}_adjusted.lab
+    coeffs_dur=`cat ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii_adjusted | wc -l`
+    feats_dur=`cat ss_dnn/data/decimal_data_711/${TRAIN_FILENAME}_adjusted.lab | wc -l`
+    echo $coeffs_dur $feats_dur
+
    done
 
 fi
