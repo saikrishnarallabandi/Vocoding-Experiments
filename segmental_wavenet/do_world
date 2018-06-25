@@ -102,8 +102,10 @@ then
 
     # Combine the coefficients
     paste ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii
-
+    rm -r ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_asci 
+    rm -r $mgc_dir/* $lf0_dir/* $bap_dir/*
   done
+  rm -rf $mgc_dir $lf0_dir $bap_dir
 fi
 
 
@@ -121,8 +123,83 @@ then
    do
      echo "Extracting features for " $TRAIN_FILENAME
      python extract_worldcoeffs.py ${SRC_DIR}/${TRAIN_FILENAME}.wav ${FEATS_DIR}
+     
    done 
 
    echo "Got the ascii features"
    $0 combine_coeffs_world $4 $3
 fi
+
+
+if [ "$1" = "combine_coeffs_world_singlefile" ]
+then
+
+    
+   SRC_DIR=$2
+   FILE=$3
+   WORLD_FEATURE_DIR='.'
+   nFFTHalf=1024 
+   alpha=0.58
+   mc_size=59
+   order=4
+   order1=5
+   mc_size1=60
+   mgc_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/mgc
+   lf0_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/lf0
+   bap_dir=${WORLD_FEATURE_DIR}/${SRC_DIR}/bap 
+   mkdir -p $mgc_dir $lf0_dir $bap_dir
+
+   TRAIN_FILENAME=$FILE
+
+    echo "Combining coefficients for " $TRAIN_FILENAME 
+
+    # Compute log f0
+    $x2x +af ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii   | $SOPR -magic 0.0 -LN -MAGIC -1.0 > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_world  || exit 0
+    cp ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_world ${lf0_dir}/${TRAIN_FILENAME}.lf0
+    $x2x +fa ${lf0_dir}/${TRAIN_FILENAME}.lf0 > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii
+    #echo "Computed log f0"   ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii 
+
+    # Compute MGC
+    $x2x +af ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii | $SOPR -R -m 32768.0 | $mcep -a $alpha -m $mc_size -l $nFFTHalf -e 1.0E-8 -j 0 -f 0.0 -q 3  > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mcep_world || exit 0
+    cp ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mcep_world ${mgc_dir}/${TRAIN_FILENAME}.mgc
+    $x2x +fa$mc_size1 ${mgc_dir}/${TRAIN_FILENAME}.mgc > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii
+    #echo "Computed MGC "    ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii
+
+    # Compute band aperiodicity
+    $x2x +af ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii | $SOPR -R -m 32768.0 | $mcep -a $alpha -m $order -l $nFFTHalf -e 1.0E-8 -j 0 -f 0.0 -q 3 >  ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_world || exit 0
+    cp ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_world ${bap_dir}/${TRAIN_FILENAME}.bap
+    $x2x +fa$order1 ${bap_dir}/${TRAIN_FILENAME}.bap > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii
+    #echo $TRAIN_FILENAME "Computed band aperiodicity" ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii
+
+    # Combine the coefficients
+    paste ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii
+    rm -r ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii 
+    rm -r $mgc_dir/* $lf0_dir/* $bap_dir/*
+    rm -r $mgc_dir $lf0_dir $bap_dir ${WORLD_FEATURE_DIR}/${SRC_DIR}/*_world
+    rm -r ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii
+    #echo "Removed " ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii
+
+fi
+
+
+
+if [ "$1" = "wav2world_file" ]
+then
+
+    
+   SRC_DIR=$2
+   FILE=$3
+   FEATS_DIR=$4
+   WORLD_FEATURE_DIR='.'
+   mkdir -p ${FEATS_DIR}
+
+   cat $FILE | while read TRAIN_FILENAME ;
+   do
+     echo "Extracting features for " $TRAIN_FILENAME
+     python extract_worldcoeffs.py ${SRC_DIR}/${TRAIN_FILENAME}.wav ${FEATS_DIR}
+     $0 combine_coeffs_world_singlefile $4  ${TRAIN_FILENAME}
+     echo " "
+   done 
+
+fi
+
