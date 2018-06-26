@@ -195,6 +195,7 @@ then
 
    cat $FILE | while read TRAIN_FILENAME ;
    do
+     
      echo "Extracting features for " $TRAIN_FILENAME
      python extract_worldcoeffs.py ${SRC_DIR}/${TRAIN_FILENAME}.wav ${FEATS_DIR}
      $0 combine_coeffs_world_singlefile $4  ${TRAIN_FILENAME}
