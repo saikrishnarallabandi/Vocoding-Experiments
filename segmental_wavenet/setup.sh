@@ -35,3 +35,5 @@ mkdir data
 python 02_make_ccoeffs_wav_pm.py
 
 cd ../repos/wavenet_vocoder
+cp ../../scripts/train.txt ../../scripts/data/
+python3.5 train.py --data-root=../../scripts/data
