@@ -88,7 +88,7 @@ def make_pm_ccoeffs_wav_pm(file):
   timestamp_array = read_pmfile(pitchmark_file)
   fname = os.path.basename(file).split('.')[0]
 
-  ccoeffs_file = '../feats/slt_arctic/' + fname + '.ccoeffs_ascii'
+  ccoeffs_file = '../feats/slt_arctic_1msec/' + fname + '.ccoeffs_ascii'
   ccoeffs = np.loadtxt(ccoeffs_file)
 
   wav_file = '../voices/cmu_us_slt/wav/' + fname + '.wav'
@@ -98,8 +98,8 @@ def make_pm_ccoeffs_wav_pm(file):
   for i, t in enumerate(timestamp_array):
     period_start = float(t) - 0.005 if float(t) - 0.005 > 0 else 0
     period_end = float(t) + 0.005 if float(t) + 0.005 < timestamp_array[-1] else timestamp_array[-1]
-    frame_start = int(period_start * 1000)
-    frame_end = int(period_end * 1000)
+    frame_start = int(float(period_start * 1000) / 1) # 1 msec
+    frame_end = int(float(period_end * 1000) / 1) # 1msec
     sample_start = int(period_start * 16000)
     sample_end = int(period_end * 16000)
     
@@ -108,21 +108,23 @@ def make_pm_ccoeffs_wav_pm(file):
     #print fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0'    
 
     c = ccoeffs[frame_start: frame_end]
-    np.save("data_new/" + fname + '-mel-' + str(i).zfill(4) + '.npy', c)
+    np.save("data_1msec/" + fname + '-mel-' + str(i).zfill(4) + '.npy', c)
     w = wav_quantized[sample_start:sample_end]
-    np.save("data_new/" + fname + '-audio-' + str(i).zfill(4) + '.npy',w)
+    np.save("data_1msec/" + fname + '-audio-' + str(i).zfill(4) + '.npy',w)
     if len(w) == 160 and len(c) == 10:   
         g.write(fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0' + '\n')
-        h.write(fname + ' ' + str(sample_end-sample_start) + ' ' + str(frame_end - frame_start) + '\n') 
+        h.write(fname + '-audio-' + str(i).zfill(4) + '.npy. PitchMark at ' + str(t) + ' ( ' + str(float(t)*16000) +  '): '   + str(sample_end-sample_start) + ' samples from ' + str(sample_start) + ' through ' + str(sample_end) + ' and ' +  str(frame_end - frame_start)  + ' frames from ' + str(frame_start) + ' through ' + str(frame_end) + ' ' + '\n') 
         if save_plot :
           axes = plt.gca()
           axes.set_ylim([-0.9,0.9])
           plt.plot(w)
-          plt.savefig('data_new/' + fname + '-plot-' + str(i).zfill(4) + '_noquantization.png')
+          plt.savefig('data_1msec/' + fname + '-plot-' + str(i).zfill(4) + '_noquantization.png')
           plt.close()
+    else:
+        h.write(" Didnt make the cut: " + fname + '-audio-' + str(i).zfill(4) + '.npy. PitchMark at ' + str(t) + ' ( ' + str(float(t)*16000) +  '): Period Start: ' + str(period_start) + ' Period end: ' + str(period_end) + ' '  + str(sample_end-sample_start) + ' samples from ' + str(sample_start) + ' through ' + str(sample_end)  + ' and ' +  str(frame_end - frame_start)  + ' frames from ' + str(frame_start) + ' through ' + str(frame_end) + '\n')
 
 pitchmark_files = sorted(os.listdir('../voices/cmu_us_slt/pm/'))
-g = open('train.txt','w')
+g = open('data_1msec/train.txt','w')
 h = open('log.txt','w')
 l = 0
 for f in pitchmark_files:
