@@ -15,13 +15,14 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import time
+from model import *
 
 '''
 Resources:
 https://github.com/MagaliDrumare/How-to-learn-PyTorch-NN-CNN-RNN-LSTM/blob/master/09-RNN.ipynb
 '''
 
-ccoeffs_folder = 'data_new'
+ccoeffs_folder = 'data_1msec'
 wav_folder = ccoeffs_folder
 train_file = ccoeffs_folder + '/train.txt'
 test_file = 'test.txt'
@@ -30,32 +31,11 @@ if not os.path.exists(exp_dir):
    os.makedirs(exp_dir)
 
 print_flag = 0
-num_train = 300000
+num_train = 10000
 batch_size = 1
 epochs = 100
 saveplot_flag = 1
 log_flag = 1
-
-class Net(torch.nn.Module):
-
-    def __init__(self):
-        super(Net, self).__init__()
-        self.rnn = nn.LSTM(66, 256, batch_first=True, bidirectional=True) # input_dim, hidden_dim
-        self.fc1 = nn.Linear(512, 256) # https://stackoverflow.com/questions/45022734/understanding-a-simple-lstm-pytorch
-        self.fc2 = nn.Linear(256, 160)
-
-    def forward(self,x):
-        if print_flag:
-          print("Shape input to RNN is ", x.shape) # [1,10,66]
-        out, (h, cell) = self.rnn(x) # (batch_size, seq, input_size)
-        h_hat = h.view( h.shape[1], h.shape[0]*h.shape[2])
-        if print_flag :
-          print("Shape output from  RNN is ", x.shape) # [1, 10, 256]
-          print("Shape of hidden from RNN is ", h.shape)
-          print("Shape of RNN cell: ", cell.shape)
-          print("Modified shape of RNN hidden: ", h_hat.shape)
-        return self.fc2(F.relu(self.fc1(h_hat))) #.tanh()
-
 
 class arctic_dataset(Dataset):
       def __init__(self, ccoeffs_folder, wav_folder, train_file):
@@ -132,12 +112,12 @@ test_loader = DataLoader(wks_test,
                          )
 
 
-net = Net()
+net = Model_LstmFc_v2()
 net.double()
 if torch.cuda.is_available():
    net.cuda()
 mse_loss = nn.MSELoss()
-optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
+optimizer = torch.optim.SGD(net.parameters(), lr=0.01)
 logger = Logger('./logs') 
 
 time_now = time.time()
