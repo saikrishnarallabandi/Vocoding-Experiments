@@ -1,12 +1,12 @@
 import os
 import numpy as np
 from scipy.io import wavfile as wf
-import soundfile as sf
 import matplotlib
+import sys
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
-
+import soundfile as sf
 
 '''
 Read pitchmark file
@@ -15,8 +15,6 @@ Read ccoeffs file and get the ccoeffs.
 Read the wavefile and get corresponding wave.
 Quantize the wave and store <ccoeffs,wav> in numpy array. 
 '''
-
-save_plot = 0
 
 def mulaw(x, mu=256):
    return _sign(x) * _log1p(mu * _abs(x)) / _log1p(mu)
@@ -66,14 +64,12 @@ def read_pmfile(file):
    lines = f.readlines()
    timestamp_array = []
    for i, line in enumerate(lines):        
-       if i > 7:
+       if i > 9:
           pitch_mark = line.split('\n')[0].split()[0]
           timestamp_array.append(pitch_mark)
    return timestamp_array
 
 def quantize_wavfile(file):
-   # Scipy and soundfile read wavefiles differently
-   fs,A = wf.read(file)
    A,fs = sf.read(file)
    return A
 
@@ -98,44 +94,66 @@ def make_pm_ccoeffs_wav_pm(file):
   for i, t in enumerate(timestamp_array):
     period_start = float(t) - 0.005 if float(t) - 0.005 > 0 else 0
     period_end = float(t) + 0.005 if float(t) + 0.005 < timestamp_array[-1] else timestamp_array[-1]
-    frame_start = int(float(period_start * 1000) / 1) # 1 msec
-    frame_end = int(float(period_end * 1000) / 1) # 1msec
+    frame_start = int(float( period_start * 1000)/ 1) # 1 msec
+    frame_end = int(float( period_end * 1000)/ 1) # 1 msec
     sample_start = int(period_start * 16000)
     sample_end = int(period_end * 16000)
-    
-    #print period_start, period_end, frame_start, frame_end, sample_start, sample_end
-    #print len(ccoeffs), len(wav_quantized)
-    #print fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0'    
 
     c = ccoeffs[frame_start: frame_end]
-    np.save("data_1msec/" + fname + '-mel-' + str(i).zfill(4) + '.npy', c)
+    np.save("data_new/" + fname + '-mel-' + str(i).zfill(4) + '.npy', c)
     w = wav_quantized[sample_start:sample_end]
-    np.save("data_1msec/" + fname + '-audio-' + str(i).zfill(4) + '.npy',w)
+    np.save("data_new/" + fname + '-audio-' + str(i).zfill(4) + '.npy',w)
+
+    axes = plt.gca()
+    axes.set_ylim([-0.9,0.9])
+    plt.plot(w)
+    plt.savefig('data_new/' + fname + '-plot-' + str(i).zfill(4) + '_noquantization.png')
+    plt.close()
+
+    #print i, t
+
+    
     if len(w) == 160 and len(c) == 10:   
         g.write(fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0' + '\n')
-        h.write(fname + '-audio-' + str(i).zfill(4) + '.npy. PitchMark at ' + str(t) + ' ( ' + str(float(t)*16000) +  '): '   + str(sample_end-sample_start) + ' samples from ' + str(sample_start) + ' through ' + str(sample_end) + ' and ' +  str(frame_end - frame_start)  + ' frames from ' + str(frame_start) + ' through ' + str(frame_end) + ' ' + '\n') 
-        if save_plot :
-          axes = plt.gca()
-          axes.set_ylim([-0.9,0.9])
-          plt.plot(w)
-          plt.savefig('data_1msec/' + fname + '-plot-' + str(i).zfill(4) + '_noquantization.png')
-          plt.close()
+        h.write(fname + ' ' + str(sample_end-sample_start) + ' ' + str(frame_end - frame_start) + '\n') 
     else:
-        h.write(" Didnt make the cut: " + fname + '-audio-' + str(i).zfill(4) + '.npy. PitchMark at ' + str(t) + ' ( ' + str(float(t)*16000) +  '): Period Start: ' + str(period_start) + ' Period end: ' + str(period_end) + ' '  + str(sample_end-sample_start) + ' samples from ' + str(sample_start) + ' through ' + str(sample_end)  + ' and ' +  str(frame_end - frame_start)  + ' frames from ' + str(frame_start) + ' through ' + str(frame_end) + '\n')
+       #print "This is not happening. The length of w is  ", len(w), " and that of c is ", len(c)
+       #print i
+       pass
+       #sys.exit(0)
+    '''
+    # Just bypass the conditional and try to see if abs is better
+    g.write(fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0' + '\n')
+    h.write(fname + ' ' + str(sample_end-sample_start) + ' ' + str(frame_end - frame_start) + '\n')
+    '''
+
 
 pitchmark_files = sorted(os.listdir('../voices/cmu_us_slt/pm/'))
-g = open('data_1msec/train.txt','w')
+if not os.path.exists('data_new'):
+    os.makedirs('data_new')
+
+g = open('train.txt','w')
 h = open('log.txt','w')
 l = 0
 for f in pitchmark_files:
- #print f, l
- #if l < 2:
+ print f, l
+ if l < 10000: 
   if f[0] == '.':
+   print "Ignoring"
+   print '\n'
    continue
-  else: 
+  elif f.endswith('.wav.pm'): 
+   print "Ignoring"
+   print '\n'
+   continue
+  else:
    print "Processing ", f
    filename = '../voices/cmu_us_slt/pm/' + f
    make_pm_ccoeffs_wav_pm(filename)
    l += 1
+   #cmd = "python2 test_abs_v2.py " + f.split('.pm')[0] 
+   #os.system(cmd)
+   print '\n'
+
 g.close()
 h.close()
