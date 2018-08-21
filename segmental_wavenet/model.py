@@ -56,21 +56,25 @@ class Model_LstmFc_v2(torch.nn.Module):
 
     def __init__(self):
         super(Model_LstmFc_v2, self).__init__()
-        self.rnn = nn.LSTM(66, 256, num_layers=3, batch_first=True, bidirectional=True) # input_dim, hidden_dim
+        self.rnn = nn.LSTM(66, 256, num_layers=2, batch_first=True, bidirectional=True) # input_dim, hidden_dim
         self.fc1 = SequenceWise(nn.Linear(512, 256)) # https://stackoverflow.com/questions/45022734/understanding-a-simple-lstm-pytorch
         self.fc2 = SequenceWise(nn.Linear(256, 16))
+        self.fc1_bn = nn.BatchNorm1d(256)
+        self.fc2_bn = nn.BatchNorm1d(10)
 
     def forward(self,x):
         if print_flag:
           print("Shape input to RNN is ", x.shape) # [B,10,66]
         out, (h, cell) = self.rnn(x) # (batch_size, seq, input_size)
         out_fc1 = F.relu(self.fc1(out))
+        out_fc1 = self.fc2_bn(out_fc1) # https://discuss.pytorch.org/t/example-on-how-to-use-batch-norm/216
         out_fc2 = self.fc2(out_fc1)
+        out_fc2 = self.fc2_bn(out_fc2)
         if print_flag :
           print("Shape output from  RNN is ", out.shape) # [B, 10, 512]
           print("Shape of output after fc1 : ", out_fc1.shape)          
           print("Shape of output after fc2 : ", out_fc2.shape)
         out_fc2_hat = out_fc2.view(out_fc2.size(0), out_fc2.size(1)*out_fc2.size(2))
         return out_fc2_hat
-        sys.exit()
+        #sys.exit()
 
