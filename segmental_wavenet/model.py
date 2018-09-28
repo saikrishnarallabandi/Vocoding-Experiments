@@ -112,4 +112,38 @@ class Model_CnnFc(torch.nn.Module):
         return F.log_softmax(x,dim=-1)
 
          
+# Input Shape: (B, 10, 66) Output Shape: (B, 160, 256)
+class Model_AllCnn(torch.nn.Module):
+
+    def __init__(self):
+        super(Model_AllCnn, self).__init__()
+        self.bn1 = nn.BatchNorm1d(128)
+        self.bn2 = nn.BatchNorm1d(256)
+
+        # Dimension changing CNNs
+        self.cnn1 = nn.Conv1d(66,128,kernel_size = 7, stride=1,padding=3) # input channels, output channels
+        self.cnn2 = nn.Conv1d(128,256,kernel_size = 7, stride=1,padding=3)
+ 
+        # Autoregressive CNNs
+        self.cnn3 = nn.Conv1d(10,160,kernel_size = 5, stride=1, padding=2)
+
+    def forward(self,x):
+
+        if print_flag:
+          print("Shape input to CNN is ", x.shape) # [B,10,66]
+
+        # CNN expects (B,C,N)
+        x.transpose_(1,2)
+        x = F.relu(self.cnn1(x))
+        x = self.bn1(x)
+        x = F.relu(self.cnn2(x))
+        x = self.bn2(x)
+        x.transpose_(1,2)
+        print("Shape of x after CNN dimensionality modification: ", x.shape)
+        sys.exit()
+        x = self.cnn3(x)
+        if print_flag:
+          print("Shape of output from CNN is ", x.shape) # (B,10,256)
+
+        return F.log_softmax(x,dim=-1)
 
