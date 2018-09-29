@@ -1,4 +1,4 @@
-[Bimport os, sys
+import os, sys
 import numpy as np
 from keras.utils import to_categorical
 from collections import defaultdict
@@ -28,31 +28,11 @@ train_file = 'train.txt'
 test_file = 'test.txt'
 
 print_flag = 0
-num_train = 5000
+num_train = 100000
 batch_size = 8
 epochs = 100
 saveplot_flag = 0
 log_flag = 0
-
-class Net(torch.nn.Module):
-
-    def __init__(self):
-        super(Net, self).__init__()
-        self.rnn = nn.LSTM(66, 256, batch_first=True, bidirectional=True) # input_dim, hidden_dim
-        self.fc = nn.Linear(512, 160) # https://stackoverflow.com/questions/45022734/understanding-a-simple-lstm-pytorch
-
-    def forward(self,x):
-        if print_flag:
-          print("Shape input to RNN is ", x.shape) # [1,10,66]
-        out, (h, cell) = self.rnn(x) # (batch_size, seq, input_size)
-        h_hat = h.view( h.shape[1], h.shape[0]*h.shape[2])
-        if print_flag :
-          print("Shape output from  RNN is ", x.shape) # [1, 10, 256]
-          print("Shape of hidden from RNN is ", h.shape)
-          print("Shape of RNN cell: ", cell.shape)
-          print("Modified shape of RNN hidden: ", h_hat.shape)
-          print('\n')
-        return self.fc(h_hat) #.tanh()
 
 
 train_file = train_file
@@ -158,8 +138,9 @@ test_loader = DataLoader(wks_test,
                          )
 
 
-#net = Net()
 net = Model_LstmFc_v3()
+net = Model_CnnFc()
+net = Model_AllCnn()
 net.double()
 if torch.cuda.is_available():
    net.cuda()
@@ -167,7 +148,7 @@ if torch.cuda.is_available():
 ce_loss = F.nll_loss
 ce_loss = nn.NLLLoss()
 #ce_loss = ClassNLLCriterion
-optimizer = torch.optim.SGD(net.parameters(), lr=0.01)
+optimizer = torch.optim.SGD(net.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
 time_now = time.time()
 #logger = Logger('./logs')
@@ -251,4 +232,3 @@ def main():
   print('\n')
 
 main()
-
