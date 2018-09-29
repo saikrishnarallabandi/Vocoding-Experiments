@@ -120,5 +120,49 @@ class Model_LstmFc_v3(torch.nn.Module):
         out_fc1 = self.fc1_bn(out_fc1) # https://discuss.pytorch.org/t/example-on-how-to-use-batch-norm/216
         out_fc2 = self.fc2(out_fc1)
         out_fc2 = self.fc2_bn(out_fc2)
-        return F.log_softmax(out_fc2,dim=-1)
+        return F.log_softmax(out_fc2,dim=-1)\
+      
+
+# Input Shape: (B, 10, 66) Output Shape: (B, 160, 256)
+class Model_AllCnn(torch.nn.Module):
+
+    def __init__(self):
+        super(Model_AllCnn, self).__init__()
+        self.bn1 = nn.BatchNorm1d(128)
+        self.bn2 = nn.BatchNorm1d(256)
+
+        # Dimension changing CNNs
+        self.cnn1 = nn.Conv1d(66,128,kernel_size = 7, stride=1,padding=3) # input channels, output channels
+        self.cnn2 = nn.Conv1d(128,256,kernel_size = 7, stride=1,padding=3)
+ 
+        # Autoregressive CNNs
+        self.cnna = nn.Conv1d(10,20,kernel_size = 5, stride=1, padding=2)
+        self.cnnb = nn.Conv1d(20,40,kernel_size = 5, stride=1, padding=2)
+        self.cnnc = nn.Conv1d(40,80,kernel_size = 5, stride=1, padding=2)
+        self.cnnd = nn.Conv1d(40,160,kernel_size = 5, stride=1, padding=2)
+
+    def forward(self,x):
+
+        if print_flag:
+          print("Shape input to CNN is ", x.shape) # [B,10,66]
+
+        # CNN expects (B,C,N)
+        x.transpose_(1,2)
+        x = F.relu(self.cnn1(x))
+        x = self.bn1(x)
+        x = F.relu(self.cnn2(x))
+        x = self.bn2(x)
+        x.transpose_(1,2)
+
+        x = self.cnna(x)
+        x = self.cnnb(x)
+        x = self.cnnc(x)
+        x = self.cnnd(x)
+
+        if print_flag:
+          print("Shape of output from CNN is ", x.shape) # (B,10,256)
+
+        return F.log_softmax(x,dim=-1)
+
+
 
