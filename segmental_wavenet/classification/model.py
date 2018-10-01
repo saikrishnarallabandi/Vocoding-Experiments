@@ -139,7 +139,7 @@ class Model_AllCnn(torch.nn.Module):
         self.cnna = nn.Conv1d(10,20,kernel_size = 5, stride=1, padding=2)
         self.cnnb = nn.Conv1d(20,40,kernel_size = 5, stride=1, padding=2)
         self.cnnc = nn.Conv1d(40,80,kernel_size = 5, stride=1, padding=2)
-        self.cnnd = nn.Conv1d(40,160,kernel_size = 5, stride=1, padding=2)
+        self.cnnd = nn.Conv1d(80,160,kernel_size = 5, stride=1, padding=2)
 
     def forward(self,x):
 
