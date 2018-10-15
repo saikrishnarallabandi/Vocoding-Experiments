@@ -71,8 +71,6 @@ def read_pmfile(file):
 
 def quantize_wavfile(file):
    A,fs = sf.read(file)
-   return A
-
    x_1 = (A / 32768.0).astype(np.float32)
    y_1 = mulaw_quantize(x_1,256)   
    return y_1

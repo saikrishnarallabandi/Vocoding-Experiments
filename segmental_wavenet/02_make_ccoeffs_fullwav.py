@@ -1,12 +1,6 @@
 import os
 import numpy as np
 from scipy.io import wavfile as wf
-import matplotlib
-import sys
-# Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
-from matplotlib import pyplot as plt
-import soundfile as sf
 
 '''
 Read pitchmark file
@@ -64,96 +58,66 @@ def read_pmfile(file):
    lines = f.readlines()
    timestamp_array = []
    for i, line in enumerate(lines):        
-       if i > 9:
+       if i > 7:
           pitch_mark = line.split('\n')[0].split()[0]
           timestamp_array.append(pitch_mark)
    return timestamp_array
 
 def quantize_wavfile(file):
-   A,fs = sf.read(file)
-   return A
+   fs,A = wf.read(file)
+   #return A
 
-   x_1 = (A / 32768.0).astype(np.float32)
+   x_1 = (A / np.max(A)).astype(np.float32)
+   return x_1
+
+   x_1 = (A / 32000).astype(np.float32)
+   return x_1
+
+
+   x_1 = A
    y_1 = mulaw_quantize(x_1,256)   
    return y_1
 
+   return x_1
 
-def make_pm_ccoeffs_wav_pm(file):
+def make_ccoeffs_wav(file):
 
-  pitchmark_file = file
-  timestamp_array = read_pmfile(pitchmark_file)
   fname = os.path.basename(file).split('.')[0]
 
-  ccoeffs_file = '../feats/slt_arctic_1msec/' + fname + '.ccoeffs_ascii'
+  ccoeffs_file = '../feats/slt_arctic_5msec/' + fname + '.ccoeffs_ascii'
   ccoeffs = np.loadtxt(ccoeffs_file)
 
   wav_file = '../voices/cmu_us_slt/wav/' + fname + '.wav'
   wav_quantized = quantize_wavfile(wav_file)
+  print "The maximum qunatizated value in this file is ", np.max(wav_quantized)
+  print '\n'
 
+  i = len(ccoeffs) -1 # 22 July 2018 Sai Krishna It is always better to cut than to append
+  frame_start = 0
+  frame_end = i 
+  sample_start = int(i * 80) # 80 because 5msec. 
+  sample_end = int((i+10) * 80)
 
-  for i, t in enumerate(timestamp_array):
-    period_start = float(t) - 0.005 if float(t) - 0.005 > 0 else 0
-    period_end = float(t) + 0.005 if float(t) + 0.005 < timestamp_array[-1] else timestamp_array[-1]
-    frame_start = int(float( period_start * 1000)/ 1) # 1 msec
-    frame_end = int(float( period_end * 1000)/ 1) # 1 msec
-    sample_start = int(period_start * 16000)
-    sample_end = int(period_end * 16000)
-
-    c = ccoeffs[frame_start: frame_end]
-    np.save("data_new/" + fname + '-mel-' + str(i).zfill(4) + '.npy', c)
-    w = wav_quantized[sample_start:sample_end]
-    np.save("data_new/" + fname + '-audio-' + str(i).zfill(4) + '.npy',w)
-
-    axes = plt.gca()
-    axes.set_ylim([-0.9,0.9])
-    plt.plot(w)
-    plt.savefig('data_new/' + fname + '-plot-' + str(i).zfill(4) + '_noquantization.png')
-    plt.close()
-
-    #print i, t
-
+  c = ccoeffs[frame_start: frame_end]
+  np.save("data_fullwav/" + fname + '-mel-' + str(i).zfill(4) + '.npy', c)
+  w = wav_quantized[sample_start:sample_end]
+  np.save("data_fullwav/" + fname + '-audio-' + str(i).zfill(4) + '.npy',w)
     
-    if len(w) == 160 and len(c) == 10:   
+    #print "Frames from ", frame_start, frame_end, " of " , len(ccoeffs), " | Waves from ",  sample_start, sample_end, " of ", len(wav_quantized)
+  if len(w) == 800 and len(c) == 10:   
         g.write(fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0' + '\n')
         h.write(fname + ' ' + str(sample_end-sample_start) + ' ' + str(frame_end - frame_start) + '\n') 
-    else:
-       #print "This is not happening. The length of w is  ", len(w), " and that of c is ", len(c)
-       #print i
-       pass
-       #sys.exit(0)
-    '''
-    # Just bypass the conditional and try to see if abs is better
-    g.write(fname + '-audio-' + str(i).zfill(4) + '.npy|' + fname + '-mel-' + str(i).zfill(4) + '.npy|' + str(sample_end-sample_start) +  '|N/A|0' + '\n')
-    h.write(fname + ' ' + str(sample_end-sample_start) + ' ' + str(frame_end - frame_start) + '\n')
-    '''
-
+    
 
 pitchmark_files = sorted(os.listdir('../voices/cmu_us_slt/pm/'))
-if not os.path.exists('data_new'):
-    os.makedirs('data_new')
-
 g = open('train.txt','w')
 h = open('log.txt','w')
-l = 0
 for f in pitchmark_files:
- print f, l
- if l < 10000: 
-  if f[0] == '.':
-   print "Ignoring"
-   print '\n'
+ if f[0] == '.':
    continue
-  elif f.endswith('.wav.pm'): 
-   print "Ignoring"
-   print '\n'
-   continue
-  else:
+ else: 
    print "Processing ", f
    filename = '../voices/cmu_us_slt/pm/' + f
-   make_pm_ccoeffs_wav_pm(filename)
-   l += 1
-   #cmd = "python2 test_abs_v2.py " + f.split('.pm')[0] 
-   #os.system(cmd)
-   print '\n'
-
+   make_ccoeffs_wav(filename)
 g.close()
 h.close()

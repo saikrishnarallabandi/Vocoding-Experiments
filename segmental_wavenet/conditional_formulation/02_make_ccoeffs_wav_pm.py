@@ -64,7 +64,7 @@ def read_pmfile(file):
    lines = f.readlines()
    timestamp_array = []
    for i, line in enumerate(lines):        
-       if i > 9:
+       if i > 8:
           pitch_mark = line.split('\n')[0].split()[0]
           timestamp_array.append(pitch_mark)
    return timestamp_array
@@ -151,8 +151,8 @@ for f in pitchmark_files:
    filename = '../voices/cmu_us_slt/pm/' + f
    make_pm_ccoeffs_wav_pm(filename)
    l += 1
-   #cmd = "python2 test_abs_v2.py " + f.split('.pm')[0] 
-   #os.system(cmd)
+   cmd = "python test_abs_v2.py " + f.split('.pm')[0] 
+   os.system(cmd)
    print '\n'
 
 g.close()
