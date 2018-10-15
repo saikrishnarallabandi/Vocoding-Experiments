@@ -174,8 +174,8 @@ then
     # Combine the coefficients
     paste ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii > ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ccoeffs_ascii
     rm -r ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.lf0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.mgc_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.bap_ascii 
-    rm -r $mgc_dir/* $lf0_dir/* $bap_dir/*
-    rm -r $mgc_dir $lf0_dir $bap_dir ${WORLD_FEATURE_DIR}/${SRC_DIR}/*_world
+    #rm -r $mgc_dir/* $lf0_dir/* $bap_dir/*
+    rm -r $mgc_dir/${TRAIN_FILENAME}.mgc*  $lf0_dir/${TRAIN_FILENAME}.lf0* $bap_dir/${TRAIN_FILENAME}.bap* #${WORLD_FEATURE_DIR}/${SRC_DIR}/_world
     rm -r ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii
     #echo "Removed " ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.f0_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.sp_ascii ${WORLD_FEATURE_DIR}/${SRC_DIR}/${TRAIN_FILENAME}.ap_ascii
 
@@ -196,11 +196,55 @@ then
    cat $FILE | while read TRAIN_FILENAME ;
    do
      
-     echo "Extracting features for " $TRAIN_FILENAME
-     python extract_worldcoeffs.py ${SRC_DIR}/${TRAIN_FILENAME}.wav ${FEATS_DIR}
-     $0 combine_coeffs_world_singlefile $4  ${TRAIN_FILENAME}
-     echo " "
+    if [ ! -f ${TRAIN_FILENAME}.ccoeffs_ascii ]; then
+
+       echo "Extracting features for " $TRAIN_FILENAME
+       python extract_worldcoeffs.py ${SRC_DIR}/${TRAIN_FILENAME}.wav ${FEATS_DIR}
+       $0 combine_coeffs_world_singlefile $4  ${TRAIN_FILENAME}
+       echo " "
+
+    else
+      
+       echo "Found file " $TRAIN_FILENAME
+
+    fi
+
    done 
 
 fi
 
+
+if [ "$1" = "parallel" ]
+then
+
+   ACTION="$2"
+   SRC_FOLDER="$3"
+   PROMPTFILE="$4"
+   TGT_FOLDER="$5"
+
+   num_cpus=$(cat /proc/cpuinfo 2>/dev/null | grep '^processor' | wc -l )
+   seq 0 15 | xargs -n 1 -P $num_cpus $0 _parallelworker $ACTION $SRC_FOLDER $PROMPTFILE $TGT_FOLDER 
+   exit 0
+
+fi
+
+
+if [ "$1" = "_parallelworker" ]
+then
+
+   ACTION="$2"
+   SRC_FOLDER="$3"
+   PROMPTFILE="$4"
+   TGT_FOLDER="$5"  
+   INDEX="$6"
+
+   echo $PROMPTFILE $INDEX
+   mkdir -p tmpdir
+   # Get our partition of PROMPTFILE
+   SPLITPROMPTFILE=tmpdir/dobuild_parallelworker.$$.$INDEX
+   cat $PROMPTFILE | awk "NR%16==$INDEX {print \$0}" > $SPLITPROMPTFILE  
+
+   # Run our task ${TRAIN_FILENAME}.ccoeffs_ascii
+   $0 $ACTION $SRC_FOLDER $SPLITPROMPTFILE $TGT_FOLDER
+   
+fi
