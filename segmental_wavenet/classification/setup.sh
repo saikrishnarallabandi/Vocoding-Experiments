@@ -1,3 +1,7 @@
+#
+# file located in same directory as feats
+#
+
 cd feats
 
 # Download the features
