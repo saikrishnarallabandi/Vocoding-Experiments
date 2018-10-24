@@ -12,6 +12,7 @@ tar xvzf feats_slt_1msec_25June2018.tar.gz
 cd ../
 mkdir -p voices/cmu_us_slt
 cd voices/cmu_us_slt
+$FESTVOXDIR/src/setup_cg cmu us slt
 wget http://tts.speech.cs.cmu.edu/rsk/tts_stuff/kitchen/segmental-wavenet-experiments/data/pm_slt_26June2018.tar.gz
 tar xvzf pm_slt_26June2018.tar.gz
 wget http://festvox.org/cmu_arctic/packed/cmu_us_slt_arctic.tar.bz2
