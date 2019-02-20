@@ -17,6 +17,7 @@ def stft_librosa(y, fs, n_fft=2048, win_length=1024, hop_length=512, n_mels=None
 
     return linear, mag, mel
 
+# https://github.com/Kyubyong/tensorflow-exercises/blob/master/Audio_Processing.ipynb
 def griffinlim(spectrogram, n_iter=50, n_fft=2048, win_length=2048, hop_length=512):
  
     print("Shape of spectrogram is ", spectrogram.shape)
